@@ -1,0 +1,7 @@
+node_modules
+.next
+out
+.overlay-content
+content-overlay.config.json
+content/site.json
+*.log

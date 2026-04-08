@@ -1,0 +1,41 @@
+name: Bug Report
+description: Report a reproducible bug in next-content-overlay.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction Steps
+      description: Exact commands and files used.
+      placeholder: |
+        1. Run `content-overlay init`
+        2. Run `content-overlay scan`
+        3. Run ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version, OS, package manager, and tool version.
+      placeholder: |
+        Node:
+        OS:
+        npm/pnpm/yarn:
+        next-content-overlay:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Error Output
+      description: Paste relevant CLI output.

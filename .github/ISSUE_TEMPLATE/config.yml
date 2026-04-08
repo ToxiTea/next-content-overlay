@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions Guide
+    url: https://docs.github.com/en/discussions
+    about: Use discussions for open-ended questions and support topics.

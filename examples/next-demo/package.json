@@ -1,0 +1,27 @@
+{
+  "name": "next-content-overlay-demo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "overlay:init": "content-overlay init",
+    "overlay:scan": "content-overlay scan",
+    "overlay:edit": "content-overlay edit app.page.launch-fast-with-content-overlay \"Shipped in minutes with content-overlay\"",
+    "overlay:publish": "content-overlay publish",
+    "overlay:flow": "npm run overlay:init && npm run overlay:scan && npm run overlay:edit && npm run overlay:publish"
+  },
+  "dependencies": {
+    "next": "16.1.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "next-content-overlay": "file:../..",
+    "typescript": "^5.8.2"
+  }
+}

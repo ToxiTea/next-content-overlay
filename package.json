@@ -1,0 +1,33 @@
+{
+  "name": "next-content-overlay",
+  "version": "0.1.0",
+  "description": "Simple overlay content workflow for Next.js App Router",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "content-overlay": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts",
+    "license:check": "node scripts/license-check.mjs",
+    "check": "npm run typecheck && npm run test && npm run build && npm run license:check",
+    "prepack": "npm run check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
