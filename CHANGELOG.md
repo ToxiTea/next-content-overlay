@@ -3,6 +3,13 @@
 All notable changes to `next-content-overlay` are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## 1.1.1 — README narrative
+
+Documentation-only release. Adds plain-English "What it is / How to work
+it / The flow / Where your edits live" sections to the top of the README
+so new readers get a mental model before hitting code blocks. No code
+changes.
+
 ## 1.1.0 — Pluggable storage
 
 The file-backed storage that shipped in v1.0 is now pluggable. If the default
