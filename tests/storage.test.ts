@@ -4,7 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { promises as fs } from "node:fs";
 import { ContentStorage } from "../src/server/storage.js";
+import { createContentAPI } from "../src/server/createContentAPI.js";
 import { writeJsonFile } from "../src/lib/fs.js";
+import type { StorageAdapter, HistoryEntry } from "../src/types.js";
 
 async function makeTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "overlay-storage-"));
@@ -152,6 +154,125 @@ test("ContentStorage: migrates v0.1 flat draft format", async () => {
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
+});
+
+/** Minimal in-memory StorageAdapter used to prove the seam in createContentAPI. */
+function makeMemoryAdapter(): StorageAdapter & { __drafts: Map<string, { value: string; version: number }>; __published: Map<string, string> } {
+  const published = new Map<string, string>();
+  const drafts = new Map<string, { value: string; version: number }>();
+  const history = new Map<string, HistoryEntry[]>();
+
+  const adapter: StorageAdapter = {
+    async getPublished() {
+      return Object.fromEntries(published);
+    },
+    async getContent(keys, includeDraft) {
+      const content: Record<string, string> = {};
+      const versions: Record<string, number> = {};
+      for (const k of keys) {
+        if (includeDraft && drafts.has(k)) {
+          const d = drafts.get(k)!;
+          content[k] = d.value;
+          versions[k] = d.version;
+        } else if (published.has(k)) {
+          content[k] = published.get(k)!;
+          versions[k] = 0;
+        }
+      }
+      return { content, versions };
+    },
+    async saveDraft(key, value, baseValue) {
+      if (!published.has(key) && baseValue !== undefined) {
+        published.set(key, baseValue);
+      }
+      const prev = drafts.get(key);
+      const version = prev ? prev.version + 1 : 1;
+      drafts.set(key, { value, version });
+      const entries = history.get(key) ?? [];
+      entries.push({ value, version, changeType: "save_draft", changedAt: new Date().toISOString() });
+      history.set(key, entries);
+      return { version };
+    },
+    async publish(keys) {
+      const candidates = keys ?? Array.from(drafts.keys());
+      const changedKeys: string[] = [];
+      for (const k of candidates) {
+        const d = drafts.get(k);
+        if (!d) continue;
+        if (d.value === (published.get(k) ?? "")) continue;
+        published.set(k, d.value);
+        drafts.set(k, { value: d.value, version: d.version + 1 });
+        changedKeys.push(k);
+      }
+      return { publishedCount: changedKeys.length, changedKeys };
+    },
+    async getHistory(key, limit = 25) {
+      const entries = history.get(key) ?? [];
+      return entries.slice(-limit).reverse();
+    },
+    async restoreVersion(key, version) {
+      const entries = history.get(key) ?? [];
+      const target = entries.find((e) => e.version === version);
+      if (!target) throw new Error(`Version ${version} not found`);
+      const prev = drafts.get(key);
+      const next = prev ? prev.version + 1 : 1;
+      drafts.set(key, { value: target.value, version: next });
+      return { value: target.value, version: next };
+    },
+    async getUnpublishedCount() {
+      let count = 0;
+      for (const [k, d] of drafts) {
+        if (d.value !== (published.get(k) ?? "")) count++;
+      }
+      return count;
+    },
+  };
+
+  return Object.assign(adapter, { __drafts: drafts, __published: published });
+}
+
+test("StorageAdapter: custom adapter plugs into createContentAPI end-to-end", async () => {
+  const storage = makeMemoryAdapter();
+  const handler = createContentAPI({
+    storage,
+    isAdmin: () => true,
+  });
+
+  const ctx = { params: Promise.resolve({ action: ["save"] }) };
+  const saveReq = new Request("http://test/api/content-overlay/save", {
+    method: "POST",
+    body: JSON.stringify({ key: "hero.title", value: "From Memory Adapter", baseValue: "Default" }),
+  });
+  const saveRes = await handler(saveReq, ctx);
+  assert.equal(saveRes.status, 200);
+  const saveBody = await saveRes.json() as { success: boolean; version: number };
+  assert.equal(saveBody.success, true);
+  assert.equal(saveBody.version, 1);
+
+  // Adapter state reflects the save
+  assert.equal(storage.__drafts.get("hero.title")?.value, "From Memory Adapter");
+  assert.equal(storage.__published.get("hero.title"), "Default");
+
+  // Publish via the real HTTP handler
+  const pubReq = new Request("http://test/api/content-overlay/publish", {
+    method: "POST",
+    body: JSON.stringify({ all: true }),
+  });
+  const pubRes = await handler(pubReq, { params: Promise.resolve({ action: ["publish"] }) });
+  assert.equal(pubRes.status, 200);
+  const pubBody = await pubRes.json() as { publishedCount: number; changedKeys: string[] };
+  assert.equal(pubBody.publishedCount, 1);
+  assert.deepEqual(pubBody.changedKeys, ["hero.title"]);
+
+  // Published store now has the edited value
+  assert.equal(storage.__published.get("hero.title"), "From Memory Adapter");
+
+  // GET /me reports zero unpublished after publish
+  const meReq = new Request("http://test/api/content-overlay/me");
+  const meRes = await handler(meReq, { params: Promise.resolve({ action: ["me"] }) });
+  const meBody = await meRes.json() as { isAdmin: boolean; unpublishedCount: number };
+  assert.equal(meBody.isAdmin, true);
+  assert.equal(meBody.unpublishedCount, 0);
 });
 
 test("ContentStorage: getContent returns published and draft values", async () => {

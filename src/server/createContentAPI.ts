@@ -1,7 +1,7 @@
 import { ContentStorage } from "./storage.js";
 import { defaultAdminCheck, buildTokenCookie } from "./auth.js";
 import { sanitizeText } from "../lib/sanitize.js";
-import type { ContentAPIOptions } from "../types.js";
+import type { ContentAPIOptions, StorageAdapter } from "../types.js";
 
 type RouteContext = { params: Promise<{ action: string[] }> };
 
@@ -18,7 +18,8 @@ type RouteContext = { params: Promise<{ action: string[] }> };
  * ```
  */
 export function createContentAPI(options: ContentAPIOptions = {}) {
-  const storage = new ContentStorage(options.contentDir ?? process.cwd());
+  const storage: StorageAdapter =
+    options.storage ?? new ContentStorage(options.contentDir ?? process.cwd());
   const checkAdmin = options.isAdmin ?? defaultAdminCheck;
 
   return async function handler(
@@ -61,7 +62,7 @@ type AdminCheck = (request: Request) => Promise<boolean> | boolean;
 async function handleMe(
   request: Request,
   checkAdmin: AdminCheck,
-  storage: ContentStorage
+  storage: StorageAdapter
 ): Promise<Response> {
   const isAdmin = await checkAdmin(request);
   if (!isAdmin) {
@@ -74,7 +75,7 @@ async function handleMe(
 async function handleContent(
   request: Request,
   checkAdmin: AdminCheck,
-  storage: ContentStorage
+  storage: StorageAdapter
 ): Promise<Response> {
   const url = new URL(request.url);
   const keysParam = url.searchParams.get("keys");
@@ -98,7 +99,7 @@ async function handleContent(
 async function handleSave(
   request: Request,
   checkAdmin: AdminCheck,
-  storage: ContentStorage
+  storage: StorageAdapter
 ): Promise<Response> {
   const isAdmin = await checkAdmin(request);
   if (!isAdmin) return json({ error: "Forbidden" }, 403);
@@ -120,7 +121,7 @@ async function handleSave(
 async function handlePublish(
   request: Request,
   checkAdmin: AdminCheck,
-  storage: ContentStorage
+  storage: StorageAdapter
 ): Promise<Response> {
   const isAdmin = await checkAdmin(request);
   if (!isAdmin) return json({ error: "Forbidden" }, 403);
@@ -139,7 +140,7 @@ async function handlePublish(
 async function handleHistory(
   request: Request,
   checkAdmin: AdminCheck,
-  storage: ContentStorage
+  storage: StorageAdapter
 ): Promise<Response> {
   const isAdmin = await checkAdmin(request);
   if (!isAdmin) return json({ error: "Forbidden" }, 403);
@@ -160,7 +161,7 @@ async function handleHistory(
 async function handleRestore(
   request: Request,
   checkAdmin: AdminCheck,
-  storage: ContentStorage
+  storage: StorageAdapter
 ): Promise<Response> {
   const isAdmin = await checkAdmin(request);
   if (!isAdmin) return json({ error: "Forbidden" }, 403);

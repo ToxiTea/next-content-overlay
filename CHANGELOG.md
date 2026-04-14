@@ -3,6 +3,43 @@
 All notable changes to `next-content-overlay` are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## 1.1.0 — Pluggable storage
+
+The file-backed storage that shipped in v1.0 is now pluggable. If the default
+JSON-in-repo backend doesn't fit your hosting model (e.g. ephemeral filesystems
+on Vercel/Netlify, or non-technical teammates editing the live site), you can
+now bring your own storage — Postgres, Supabase, blob store, GitHub API, or
+anything else — without forking the library.
+
+### Added
+
+- **`StorageAdapter` interface** — 7 methods (`getPublished`, `getContent`,
+  `saveDraft`, `publish`, `getHistory`, `restoreVersion`, `getUnpublishedCount`).
+  Exported from `next-content-overlay/server`.
+- **`createContentAPI({ storage })`** — pass any `StorageAdapter` implementation;
+  the route handler uses it for every operation instead of the file-backed default.
+- **`getContent({ storage })`** — SSR helper now accepts a custom adapter so your
+  layout can hydrate the provider from the same backend used by the API.
+- **README "Pluggable storage" section** — explains the interface, the
+  persistence tradeoffs per hosting model, and walks through a sketch adapter.
+- **End-to-end test** — a minimal in-memory `StorageAdapter` exercised through
+  the real `createContentAPI` HTTP handler, proving custom backends work
+  end-to-end without touching the filesystem.
+
+### Changed
+
+- `ContentStorage` now declares `implements StorageAdapter`. No behavior change —
+  existing file-backed projects upgrade with zero code changes.
+- `getContent()` signature is overloaded: `getContent()`, `getContent(rootDir)`,
+  and `getContent({ rootDir?, storage? })` all work. Existing callers are
+  unaffected.
+
+### Non-goals
+
+- **No official DB drivers.** Shipping Postgres/Supabase/GitHub adapters in
+  this package would pick winners and bloat the install. The seam is the
+  feature; drivers live in user code (or community packages).
+
 ## 1.0.0 — Plug-and-play inline CMS
 
 v1.0 is a major upgrade: the CLI that shipped in v0.1 is now the **secondary**

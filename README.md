@@ -2,38 +2,7 @@
 
 **Plug-and-play inline CMS for Next.js — click text on the page, edit it, publish. No database.**
 
-`next-content-overlay` gives any Next.js App Router project a Squarespace-style inline editor in three files. Your content lives in a plain JSON file in your repo. Version control handles history. There is no CMS platform, no vendor lock-in, no config hell.
-
-What it is: next-content-overlay is a tiny add-on for Next.js websites that lets you click on text right on your live page and edit it   — no code changes, no CMS, no redeploys. Edits save to a local draft, and when you hit "publish," they become the real content.      
-
-  How to work it:
-  1. In your Next.js project, run npx content-overlay init — it sets up the config and content files for you.
-  2. Wrap your app in the <ContentOverlayProvider> and swap plain text for <Editable> tags (the init command walks you through it).     
-  3. Run your site with npm run dev, toggle edit mode in the corner, click any text, type the new version, and hit publish.
-
-  It's about as plug-and-play as it gets for a dev tool — but you do need to be running the site locally (or wire up the API route in   
-  the demo) for the editor to save anywhere. It's not a hosted service; it lives inside your own project.
-
-The flow:
-
-  1. npx content-overlay init — creates the config and empty content files.
-  2. npx content-overlay scan (optional) — walks your .tsx files, finds the plain text sitting inside JSX, and generates stable keys for   each string so it knows what's editable. Alternatively, you wrap text yourself in <Editable k="hero.title">.
-  3. You run your site (npm run dev or deployed) and hit Ctrl+Shift+E — every <Editable> chunk becomes clickable. Edit in place, it     
-  saves to a draft JSON file.
-  4. Click Publish — the draft gets promoted into content/site.json, which is the file your live site actually reads.
-
-Making edits persist
-
-  Because content lives in JSON files in your repo, where you run the editor determines how your changes stick around:
-
-  - Local dev (npm run dev) — edits write to content/site.json and .overlay-content/* on your disk. Commit those files to git to ship   
-  them. This is the intended workflow: edit visually, then git add content/ && git commit.
-  - Deployed host (Vercel, Netlify, etc.) — the filesystem is ephemeral, so any "publish" made against the live site will be lost on the   next deploy. Treat the deployed editor as a preview only, and make the real edits locally (or on a preview branch) so the updated    
-  JSON gets committed back to git.
-  - Want edits from production to stick? You'd need a storage backend that writes somewhere durable (e.g. commit to GitHub via the API, 
-  or swap in blob/object storage). That's not built in yet — it's on the roadmap.
-
-  TL;DR: run it locally, edit, publish, commit, push. That's the persistence model.
+`next-content-overlay` gives any Next.js App Router project a Squarespace-style inline editor in three files. Your content lives in a plain JSON file in your repo (by default — v1.1 lets you plug in any backend). Version control handles history. There is no CMS platform, no vendor lock-in, no config hell.
 
 It started as a CLI-only tool in v0.1 (`init → scan → edit → publish`). As of **v1.0** the primary interface is a React component + server bundle that you drop into a layout — and the CLI is still there as a secondary workflow when you'd rather edit copy from the terminal.
 
@@ -184,6 +153,84 @@ Sub-routes mounted under `[...action]`:
 | GET    | `/history?key=hero.title`   | List version history for a key |
 | POST   | `/restore`                  | Restore a historical version as a new draft |
 | POST   | `/login`                    | Validate the shared secret and set a cookie |
+
+## Making edits persist
+
+Where you run the editor determines how your changes stick around. The
+default storage backend is **file-based** — drafts and published content live
+in JSON files in your repo:
+
+- **Local dev (`npm run dev`)** — edits write to `content/site.json` and
+  `.overlay-content/*` on your disk. Commit those files to git to ship them.
+  This is the intended workflow with the default backend: edit visually, then
+  `git add content/ && git commit && git push`.
+- **Deployed host (Vercel, Netlify, Cloudflare, etc.)** — the filesystem is
+  ephemeral, so any "publish" made against the live site with the default
+  backend is **lost on the next deploy**. Treat the deployed editor as a
+  preview only, or plug in a durable storage adapter (see below).
+- **Want edits from the live site to persist?** Implement a `StorageAdapter`
+  backed by your own database, blob store, or the GitHub API. The seam is
+  built in as of v1.1 — see the next section.
+
+**TL;DR:** for local-only or solo workflows, edit → publish → commit → push.
+For team / production editing, plug in a custom storage adapter.
+
+## Pluggable storage (v1.1+)
+
+The default `ContentStorage` writes to JSON files. If you want edits to persist
+somewhere durable — Postgres, Supabase, Redis, S3, GitHub via the API, your own
+internal service — implement the `StorageAdapter` interface and pass an
+instance into `createContentAPI` and `getContent`.
+
+```ts
+import type { StorageAdapter } from "next-content-overlay/server";
+
+export class PostgresAdapter implements StorageAdapter {
+  constructor(private db: MyDbClient) {}
+
+  async getPublished()                       { /* SELECT key, value FROM content_published */ }
+  async getContent(keys, includeDraft)       { /* fetch by keys, overlay drafts if admin */ }
+  async saveDraft(key, value, baseValue)     { /* INSERT ... RETURNING version */ }
+  async publish(keys)                        { /* copy drafts → published in a tx */ }
+  async getHistory(key, limit)               { /* SELECT ... ORDER BY version DESC */ }
+  async restoreVersion(key, version)         { /* clone old row as new draft */ }
+  async getUnpublishedCount()                { /* SELECT count(*) WHERE draft <> published */ }
+}
+```
+
+Wire it into the route handler and your SSR helper:
+
+```ts
+// app/api/content-overlay/[...action]/route.ts
+import { createContentAPI } from "next-content-overlay/server";
+import { PostgresAdapter } from "@/lib/content-adapter";
+
+const storage = new PostgresAdapter(db);
+const handler = createContentAPI({ storage });
+export const GET = handler;
+export const POST = handler;
+```
+
+```ts
+// app/layout.tsx
+import { getContent } from "next-content-overlay/server";
+import { storage } from "@/lib/content-adapter";
+
+const content = await getContent({ storage });
+```
+
+That's the whole integration. Once your adapter is wired in, edits made from
+the live deployed site survive deploys, and your non-technical teammates can
+edit copy without a git commit.
+
+The `StorageAdapter` interface is intentionally tiny (7 methods, all
+key/value + versioning). The file-backed `ContentStorage` is the reference
+implementation — read [`src/server/storage.ts`](src/server/storage.ts) when
+building your own.
+
+> **No official DB drivers ship in this package.** That's deliberate — picking
+> Postgres vs. Supabase vs. Mongo vs. GitHub is your call, not the library's.
+> Community adapters welcome via PR.
 
 ## Auth & admin access
 

@@ -2,12 +2,12 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { readJsonFile, writeJsonFile, ensureDir } from "../lib/fs.js";
 import { sanitizeText } from "../lib/sanitize.js";
-import type { DraftEntry, HistoryEntry } from "../types.js";
+import type { DraftEntry, HistoryEntry, StorageAdapter } from "../types.js";
 
 type DraftStore = Record<string, DraftEntry>;
 type HistoryStore = Record<string, HistoryEntry[]>;
 
-export class ContentStorage {
+export class ContentStorage implements StorageAdapter {
   private contentPath: string;
   private draftPath: string;
   private historyPath: string;
