@@ -4,6 +4,37 @@
 
 `next-content-overlay` gives any Next.js App Router project a Squarespace-style inline editor in three files. Your content lives in a plain JSON file in your repo. Version control handles history. There is no CMS platform, no vendor lock-in, no config hell.
 
+What it is: next-content-overlay is a tiny add-on for Next.js websites that lets you click on text right on your live page and edit it   — no code changes, no CMS, no redeploys. Edits save to a local draft, and when you hit "publish," they become the real content.      
+
+  How to work it:
+  1. In your Next.js project, run npx content-overlay init — it sets up the config and content files for you.
+  2. Wrap your app in the <ContentOverlayProvider> and swap plain text for <Editable> tags (the init command walks you through it).     
+  3. Run your site with npm run dev, toggle edit mode in the corner, click any text, type the new version, and hit publish.
+
+  It's about as plug-and-play as it gets for a dev tool — but you do need to be running the site locally (or wire up the API route in   
+  the demo) for the editor to save anywhere. It's not a hosted service; it lives inside your own project.
+
+The flow:
+
+  1. npx content-overlay init — creates the config and empty content files.
+  2. npx content-overlay scan (optional) — walks your .tsx files, finds the plain text sitting inside JSX, and generates stable keys for   each string so it knows what's editable. Alternatively, you wrap text yourself in <Editable k="hero.title">.
+  3. You run your site (npm run dev or deployed) and hit Ctrl+Shift+E — every <Editable> chunk becomes clickable. Edit in place, it     
+  saves to a draft JSON file.
+  4. Click Publish — the draft gets promoted into content/site.json, which is the file your live site actually reads.
+
+Making edits persist
+
+  Because content lives in JSON files in your repo, where you run the editor determines how your changes stick around:
+
+  - Local dev (npm run dev) — edits write to content/site.json and .overlay-content/* on your disk. Commit those files to git to ship   
+  them. This is the intended workflow: edit visually, then git add content/ && git commit.
+  - Deployed host (Vercel, Netlify, etc.) — the filesystem is ephemeral, so any "publish" made against the live site will be lost on the   next deploy. Treat the deployed editor as a preview only, and make the real edits locally (or on a preview branch) so the updated    
+  JSON gets committed back to git.
+  - Want edits from production to stick? You'd need a storage backend that writes somewhere durable (e.g. commit to GitHub via the API, 
+  or swap in blob/object storage). That's not built in yet — it's on the roadmap.
+
+  TL;DR: run it locally, edit, publish, commit, push. That's the persistence model.
+
 It started as a CLI-only tool in v0.1 (`init → scan → edit → publish`). As of **v1.0** the primary interface is a React component + server bundle that you drop into a layout — and the CLI is still there as a secondary workflow when you'd rather edit copy from the terminal.
 
 > **From v0.1 → v1.0:** the CLI still ships and still works. The big upgrade is that you can now edit text visually, on the page, with drafts and version history, without leaving the browser. See [CHANGELOG.md](CHANGELOG.md) for the full migration guide.
