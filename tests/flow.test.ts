@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { runInit } from "../src/commands/init.js";
-import { runScan } from "../src/commands/scan.js";
-import { runEdit } from "../src/commands/edit.js";
-import { runPublish } from "../src/commands/publish.js";
+import { runInit } from "../src/cli/commands/init.js";
+import { runScan } from "../src/cli/commands/scan.js";
+import { runEdit } from "../src/cli/commands/edit.js";
+import { runPublish } from "../src/cli/commands/publish.js";
 import { readJsonFile } from "../src/lib/fs.js";
 import { DEFAULT_CONFIG } from "../src/lib/config.js";
 

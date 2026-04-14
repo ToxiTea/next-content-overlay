@@ -1,11 +1,11 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { loadConfig } from "../lib/config.js";
-import { CliError } from "../lib/errors.js";
-import { collectFiles, readJsonFile, writeJsonFile } from "../lib/fs.js";
-import { extractTextEntries } from "../lib/scan.js";
-import { type ContentMapEntry } from "../types.js";
-import { ensureStringRecord } from "../lib/validation.js";
+import { loadConfig } from "../../lib/config.js";
+import { CliError } from "../../lib/errors.js";
+import { collectFiles, readJsonFile, writeJsonFile } from "../../lib/fs.js";
+import { extractTextEntries } from "../../lib/scan.js";
+import { type ContentMapEntry } from "../../types.js";
+import { ensureStringRecord } from "../../lib/validation.js";
 
 type ScanOptions = {
   cwd: string;

@@ -1,9 +1,9 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { DEFAULT_CONFIG, loadConfig, writeDefaultConfig } from "../lib/config.js";
-import { CliError } from "../lib/errors.js";
-import { readJsonFile, writeJsonFile } from "../lib/fs.js";
-import { ensureContentMap, ensureStringRecord } from "../lib/validation.js";
+import { DEFAULT_CONFIG, loadConfig, writeDefaultConfig } from "../../lib/config.js";
+import { CliError } from "../../lib/errors.js";
+import { readJsonFile, writeJsonFile } from "../../lib/fs.js";
+import { ensureContentMap, ensureStringRecord } from "../../lib/validation.js";
 
 type InitOptions = {
   cwd: string;

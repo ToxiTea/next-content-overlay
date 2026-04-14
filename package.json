@@ -1,11 +1,21 @@
 {
   "name": "next-content-overlay",
-  "version": "0.1.0",
-  "description": "Simple overlay content workflow for Next.js App Router",
+  "version": "1.0.0",
+  "description": "Plug-and-play inline CMS for Next.js App Router — edit text on the page, no database needed",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "content-overlay": "./dist/index.js"
+    "content-overlay": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/react/index.js",
+      "types": "./dist/react/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server/index.js",
+      "types": "./dist/server/index.d.ts"
+    }
   },
   "files": [
     "dist",
@@ -13,16 +23,29 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "dev": "tsx src/index.ts",
+    "build": "tsup",
+    "dev": "tsx src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
     "license:check": "node scripts/license-check.mjs",
     "check": "npm run typecheck && npm run test && npm run build && npm run license:check",
     "prepack": "npm run check"
   },
+  "peerDependencies": {
+    "next": ">=14.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
   "devDependencies": {
     "@types/node": "^22.13.10",
+    "@types/react": "^19.0.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"

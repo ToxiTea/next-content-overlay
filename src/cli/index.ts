@@ -3,9 +3,10 @@ import { runEdit } from "./commands/edit.js";
 import { runInit } from "./commands/init.js";
 import { runPublish } from "./commands/publish.js";
 import { runScan } from "./commands/scan.js";
-import { CliError, toErrorMessage } from "./lib/errors.js";
+import { runSetup } from "./commands/setup.js";
+import { CliError, toErrorMessage } from "../lib/errors.js";
 
-const VERSION = "0.1.0";
+const VERSION = "1.0.0";
 
 function printHelp(): void {
   console.log("content-overlay <command> [options]");
@@ -17,6 +18,7 @@ function printHelp(): void {
   console.log("  scan                  Scan source files and build content map");
   console.log('  edit <key> "<value>"  Update one draft content value');
   console.log("  publish               Publish draft values to content/site.json");
+  console.log("  setup [--force]       Scaffold the Next.js API route for the visual editor");
   console.log("");
   console.log("Flags");
   console.log("  -h, --help            Show help");
@@ -73,6 +75,19 @@ async function main(): Promise<void> {
         });
       }
       await runEdit({ cwd, key, value });
+      return;
+    }
+
+    if (command === "setup") {
+      const allowed = new Set(["--force"]);
+      const unknown = args.filter((arg) => arg.startsWith("-") && !allowed.has(arg));
+      if (unknown.length > 0) {
+        throw new CliError(`Unknown option(s): ${unknown.join(", ")}`, {
+          hint: "Usage: content-overlay setup [--force]"
+        });
+      }
+      const force = args.includes("--force");
+      await runSetup({ cwd, force });
       return;
     }
 

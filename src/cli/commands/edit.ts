@@ -1,8 +1,9 @@
 import path from "node:path";
-import { loadConfig } from "../lib/config.js";
-import { CliError } from "../lib/errors.js";
-import { readJsonFile, writeJsonFile } from "../lib/fs.js";
-import { ensureContentMap, ensureStringRecord } from "../lib/validation.js";
+import { loadConfig } from "../../lib/config.js";
+import { CliError } from "../../lib/errors.js";
+import { readJsonFile } from "../../lib/fs.js";
+import { ensureContentMap, ensureStringRecord } from "../../lib/validation.js";
+import { ContentStorage } from "../../server/storage.js";
 
 type EditOptions = {
   cwd: string;
@@ -21,15 +22,11 @@ export async function runEdit(options: EditOptions): Promise<void> {
   }
 
   const config = await loadConfig(options.cwd);
-  const draftPath = path.join(options.cwd, config.draftFile);
   const contentPath = path.join(options.cwd, config.contentFile);
   const mapPath = path.join(options.cwd, config.mapFile);
 
   const rawContent = await readJsonFile<unknown>(contentPath);
   const content = rawContent === null ? {} : ensureStringRecord(rawContent, config.contentFile);
-
-  const rawDraft = await readJsonFile<unknown>(draftPath);
-  const draft = rawDraft === null ? { ...content } : ensureStringRecord(rawDraft, config.draftFile);
 
   const rawMap = await readJsonFile<unknown>(mapPath);
   const map = rawMap === null ? [] : ensureContentMap(rawMap);
@@ -40,19 +37,21 @@ export async function runEdit(options: EditOptions): Promise<void> {
     });
   }
 
-  const oldValue = draft[options.key];
+  const storage = new ContentStorage(options.cwd);
+  const existingDraft = await storage.getDraft(options.key);
+  const oldValue = existingDraft?.value ?? content[options.key];
+
   if (oldValue === options.value) {
     console.log(`No change for key: ${options.key}`);
     return;
   }
 
-  draft[options.key] = options.value;
-  await writeJsonFile(draftPath, draft);
+  const { version } = await storage.saveDraft(options.key, options.value, content[options.key]);
 
-  if (oldValue === undefined) {
-    console.log(`Created draft key: ${options.key}`);
+  if (existingDraft === null) {
+    console.log(`Created draft key: ${options.key} (v${version})`);
   } else {
-    console.log(`Updated draft key: ${options.key}`);
+    console.log(`Updated draft key: ${options.key} (v${version})`);
     console.log(`Old: ${oldValue}`);
   }
   console.log(`New: ${options.value}`);
