@@ -8,6 +8,45 @@ It started as a CLI-only tool in v0.1 (`init → scan → edit → publish`). As
 
 > **From v0.1 → v1.0:** the CLI still ships and still works. The big upgrade is that you can now edit text visually, on the page, with drafts and version history, without leaving the browser. See [CHANGELOG.md](CHANGELOG.md) for the full migration guide.
 
+## What it is
+
+`next-content-overlay` is a tiny add-on for Next.js websites that lets you click on text right on your live page and edit it — no code changes, no CMS dashboard, no redeploys. Edits save to a local **draft**, and when you hit **publish**, they become the real content your site serves.
+
+It's about as plug-and-play as it gets for a dev tool: it lives inside your own project (not a hosted service), ships as a single npm package, and has no database by default — your repo *is* the database.
+
+## How to work it
+
+1. **Install it** in your Next.js App Router project: `npm i -D next-content-overlay`.
+2. **Set up the API route** in one command: `npx content-overlay setup`. This scaffolds the catch-all route at `app/api/content-overlay/[...action]/route.ts` so saves and publishes have somewhere to go.
+3. **Wrap your root layout** in `<ContentOverlayProvider>` and add `<EditModeToggle />` — the little floating edit button.
+4. **Tag editable text** by swapping plain strings for `<Editable k="some.key">Your text</Editable>`. You can do this by hand, or run `npx content-overlay scan` to auto-discover strings in your JSX and generate stable keys for you.
+5. **Run your site** with `npm run dev`, press `Ctrl+Shift+E`, click any tagged text, type the new version, hit save. When you're happy, click **Publish Drafts**.
+
+That's the full loop. No schemas, no migrations, no admin panel to build.
+
+## The flow, under the hood
+
+Here's what actually happens when you click → edit → save → publish:
+
+- **Click an `<Editable>` in edit mode** → it becomes an inline textarea. You're editing the DOM; nothing has been written yet.
+- **Hit save** → the new value is POSTed to `/api/content-overlay/save`, which writes a versioned **draft** entry to `.overlay-content/draft.json` (or your custom storage backend). Your published content is untouched. A history entry is logged.
+- **Hit Publish Drafts** → all pending drafts get promoted into `content/site.json` (the file your app actually reads at build/request time) in a single atomic write. Another history entry is logged, and Next.js paths can be revalidated.
+- **Refresh the page** → your SSR call to `getContent()` picks up the new JSON, and the new text renders exactly like any other content in your app.
+
+Every save is versioned, so you get a per-key history panel in the editor with one-click restore — like git, but for individual strings.
+
+## Where your edits live
+
+By default, **content lives as JSON files in your repo.** That's the whole "no database" pitch:
+
+- `content/site.json` — your **published** content, committed to git. This is what your app reads.
+- `.overlay-content/draft.json` — in-progress drafts (per-key versioned). Not typically committed.
+- `.overlay-content/history.json` — per-key version history, for restore.
+
+This works great for local development and solo workflows: edit on `localhost:3000`, publish, then `git commit && git push`. Your git history doubles as your CMS audit log.
+
+**For production / team editing** (where non-technical teammates edit the live site and expect changes to stick), the filesystem on most hosts is ephemeral, so the default backend won't persist across deploys. That's what the [pluggable storage](#pluggable-storage-v11) seam added in v1.1 is for — drop in a `StorageAdapter` backed by your own database (Postgres, Supabase, Redis, GitHub API, whatever) and the exact same editor UI now writes there instead.
+
 ## Install
 
 ```bash
